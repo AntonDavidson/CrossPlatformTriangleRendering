@@ -7,17 +7,17 @@ import javax.microedition.khronos.opengles.GL10
 
 class NativeRenderer : GLSurfaceView.Renderer {
     // Native methods
-    external fun init()
-    external fun render()
+    external fun initOpenGLApp()
+    external fun renderOpenGLApp()
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         // Initialize OpenGL ES
-        init()
+        initOpenGLApp()
     }
 
     override fun onDrawFrame(gl: GL10) {
         // Render a frame
-        render()
+        renderOpenGLApp()
     }
 
     override fun onSurfaceChanged(gl: GL10, width: Int, height: Int) {
@@ -27,7 +27,7 @@ class NativeRenderer : GLSurfaceView.Renderer {
 
     companion object {
         init {
-            System.loadLibrary("native-lib") // Load the native library
+            System.loadLibrary("main_lib")
         }
     }
 }
