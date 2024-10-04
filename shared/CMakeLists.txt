@@ -10,6 +10,7 @@ add_library(opengl_utils SHARED ${CMAKE_SOURCE_DIR}/opengl_utils.cpp)
 add_library(opengl_shader SHARED ${CMAKE_SOURCE_DIR}/opengl_shader.cpp)
 
 # Include directories for the libraries (current directory)
+
 target_include_directories(main_lib PRIVATE ${CMAKE_SOURCE_DIR})
 target_include_directories(opengl_utils PRIVATE ${CMAKE_SOURCE_DIR})
 target_include_directories(opengl_shader PRIVATE ${CMAKE_SOURCE_DIR})
@@ -17,6 +18,7 @@ target_include_directories(opengl_shader PRIVATE ${CMAKE_SOURCE_DIR})
 # Find the GLESv3 library for OpenGL on Android and the log library for logging
 find_library(GLES_LIBRARY GLESv3)
 find_library(LOG_LIBRARY log)
+
 
 # Link the GLESv3 and log libraries to each target
 target_link_libraries(main_lib PRIVATE ${GLES_LIBRARY} ${LOG_LIBRARY})

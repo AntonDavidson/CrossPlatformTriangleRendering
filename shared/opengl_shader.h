@@ -1,3 +1,4 @@
+
 #ifndef OPENGL_SHADER_H
 #define OPENGL_SHADER_H
 
@@ -12,4 +13,5 @@
  */
 GLuint loadShaderProgram(const char* vertexSource, const char* fragmentSource);
 
-#endif // OPENGL_SHADER_H
+#endif
+

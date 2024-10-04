@@ -2,7 +2,7 @@
 
 #include "opengl_shader.h"
 #include <android/log.h>
-
+#include <GLES3/gl3.h>
 // Define a tag for logging shader compilation and linking info to Android's logcat
 #define LOG_TAG "ShaderLog"
 #define LOG_INFO(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)

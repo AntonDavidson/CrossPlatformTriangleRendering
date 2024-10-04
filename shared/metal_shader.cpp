@@ -1,67 +1,123 @@
-#ifdef __APPLE
+#ifdef __APPLE__
+
 #include "metal_shader.h"
-#include <Metal/Metal.h>
+#include <Foundation/Foundation.hpp>
+#include <simd/simd.h>
 
 /**
- * @brief Loads and compiles the Metal shader program, creating a render pipeline state.
+ * @brief Loads and compiles the Metal shader program using the Metal C++ API.
  *
- * This function initializes the Metal render pipeline by loading the vertex and fragment shaders,
- * creating a pipeline descriptor, and building a pipeline state object. It returns the pipeline state
- * that will be used for rendering. If there is an error during pipeline creation, it logs the error.
+ * This function initializes the Metal render pipeline by compiling vertex and fragment shaders,
+ * creating a pipeline descriptor, and building a pipeline state object.
  *
- * @return id<MTLRenderPipelineState> The compiled pipeline state object for rendering.
+ * @param device A pointer to the MTL::Device instance.
+ * @return MTL::RenderPipelineState* The compiled pipeline state object for rendering.
  */
-id<MTLRenderPipelineState> loadMetalShaderProgram() {
-    // Get the Metal device (GPU)
-    id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+MTL::RenderPipelineState* loadMetalShaderProgram(MTL::Device* device) {
+    NS::Error* error = nullptr;
 
-    // Prepare error variable to catch any issues during pipeline creation
-    NSError* error = nil;
+    // Shader source code as a string
+    const char* shaderSrc = R"(
+        #include <metal_stdlib>
+        using namespace metal;
 
-    // Load the vertex and fragment shader functions from the default Metal library
-    id<MTLFunction> vertexFunction = [device newFunctionWithName:@"vertex_main"];
-    id<MTLFunction> fragmentFunction = [device newFunctionWithName:@"fragment_main"];
+        struct v2f {
+            float4 position [[position]];
+            half3 color;
+        };
 
-    // Set up the pipeline descriptor and attach the shaders
-    MTLRenderPipelineDescriptor *pipelineDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
-    pipelineDescriptor.vertexFunction = vertexFunction;
-    pipelineDescriptor.fragmentFunction = fragmentFunction;
+        v2f vertex vertexMain(uint vertexId [[vertex_id]], device const float3* positions [[buffer(0)]], device const float3* colors [[buffer(1)]]) {
+            v2f o;
+            o.position = float4(positions[vertexId], 1.0);
+            o.color = half3(colors[vertexId]);
+            return o;
+        }
 
-    // Configure the pixel format for the color attachment
-    pipelineDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+        half4 fragment fragmentMain(v2f in [[stage_in]]) {
+            return half4(in.color, 1.0);
+        }
+    )";
 
-    // Create the pipeline state object from the descriptor
-    id<MTLRenderPipelineState> pipelineState = [device newRenderPipelineStateWithDescriptor:pipelineDescriptor error:&error];
-
-    // Log an error message if pipeline state creation failed
-    if (error) {
-        NSLog(@"Error creating pipeline state: %@", error.localizedDescription);
+    // Create the shader library from source code
+    MTL::Library* library = device->newLibrary(NS::String::string(shaderSrc, NS::UTF8StringEncoding), nullptr, &error);
+    if (!library) {
+        __builtin_printf("Error creating library: %s", error->localizedDescription()->utf8String());
+        assert(false);
     }
 
-    return pipelineState;
+    // Create vertex and fragment functions
+    MTL::Function* vertexFunction = library->newFunction(NS::String::string("vertexMain", NS::UTF8StringEncoding));
+    MTL::Function* fragmentFunction = library->newFunction(NS::String::string("fragmentMain", NS::UTF8StringEncoding));
+
+    // Create a pipeline descriptor
+    MTL::RenderPipelineDescriptor* pipelineDescriptor = MTL::RenderPipelineDescriptor::alloc()->init();
+    pipelineDescriptor->setVertexFunction(vertexFunction);
+    pipelineDescriptor->setFragmentFunction(fragmentFunction);
+    pipelineDescriptor->colorAttachments()->object(0)->setPixelFormat(MTL::PixelFormat::PixelFormatBGRA8Unorm);
+
+    // Create the pipeline state object
+    MTL::RenderPipelineState* PSO = device->newRenderPipelineState(pipelineDescriptor, &error);
+    if (!PSO) {
+        __builtin_printf("Error creating pipeline state: %s", error->localizedDescription()->utf8String());
+        assert(false);
+    }
+
+    // Release temporary objects
+    vertexFunction->release();
+    fragmentFunction->release();
+    pipelineDescriptor->release();
+    library->release();
+
+    return PSO;
 }
 
 /**
- * @brief Sets up the vertex buffer containing the triangle's vertex data.
+ * @brief Initializes vertex positions buffer for Metal rendering.
  *
- * This function initializes a Metal buffer with the coordinates for a simple triangle.
- * It creates the buffer in shared memory so that both the CPU and GPU can access it.
- * The buffer is returned so that it can be used in rendering.
- *
- * @return id<MTLBuffer> The Metal buffer containing the vertex data for rendering.
+ * @param device A pointer to the MTL::Device instance.
+ * @return MTL::Buffer* The buffer containing the vertex positions data.
  */
-id<MTLBuffer> setupMetalVertexBuffer() {
-    // Define vertex data for a triangle
-    static const float vertexData[] = {
-            0.0f,  0.5f, 0.0f,  // Top vertex
-            -0.5f, -0.5f, 0.0f, // Bottom left vertex
-            0.5f, -0.5f, 0.0f   // Bottom right vertex
+MTL::Buffer* setupMetalVertexPositionsBuffer(MTL::Device* device) {
+    const simd::float3 positions[] = {
+        { 0.0f,  0.5f, 0.0f },  // Vertex 1
+        { -0.5f, -0.5f, 0.0f }, // Vertex 2
+        { 0.5f, -0.5f, 0.0f }   // Vertex 3
     };
 
-    // Create a Metal buffer on the device for vertex data storage
-    id<MTLDevice> device = MTLCreateSystemDefaultDevice();
-    return [device newBufferWithBytes:vertexData
-                               length:sizeof(vertexData)
-                              options:MTLResourceStorageModeShared];
+    // Use MTL::ResourceStorageModeShared for iOS instead of MTL::ResourceStorageModeManaged
+    MTL::Buffer* vertexBuffer = device->newBuffer(positions, sizeof(positions), MTL::ResourceStorageModeShared);
+
+    // Check if the buffer was created successfully
+    if (!vertexBuffer) {
+        __builtin_printf("Failed to create vertex positions buffer!");
+        return nullptr;
+    }
+
+    return vertexBuffer;
 }
-#endif
+
+/**
+ * @brief Initializes vertex colors buffer for Metal rendering.
+ *
+ * @param device A pointer to the MTL::Device instance.
+ * @return MTL::Buffer* The buffer containing the vertex colors data.
+ */
+MTL::Buffer* setupMetalVertexColorsBuffer(MTL::Device* device) {
+    const simd::float3 colors[] = {
+        { 1.0f, 0.5f, 0.0f },  // Orange for Vertex 1
+        { 1.0f, 0.5f, 0.0f },  // Orange for Vertex 2
+        { 1.0f, 0.5f, 0.0f }   // Orange for Vertex 3
+    };
+    
+    // Use MTL::ResourceStorageModeShared for iOS
+    MTL::Buffer* colorBuffer = device->newBuffer(colors, sizeof(colors), MTL::ResourceStorageModeShared);
+    
+    // Check if the buffer was created successfully
+    if (!colorBuffer) {
+        __builtin_printf("Failed to create vertex colors buffer!");
+        return nullptr;
+    }
+    
+    return colorBuffer;}
+
+#endif // __APPLE__

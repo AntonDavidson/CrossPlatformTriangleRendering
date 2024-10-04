@@ -1,31 +1,42 @@
+
 #include "main_lib.h"
-#include "opengl_utils.h"
-#include "opengl_shader.h"
-#include <jni.h>
+
+
+
 
 #ifdef __APPLE__
-#include "metal_utils.h"
+#define NS_PRIVATE_IMPLEMENTATION
+#define UI_PRIVATE_IMPLEMENTATION
+#define MTL_PRIVATE_IMPLEMENTATION
+#define MTK_PRIVATE_IMPLEMENTATION
+#define CA_PRIVATE_IMPLEMENTATION
+
+#include "metal_utills.h"
 #include "metal_shader.h"
-#endif
-
-#ifdef __APPLE__
 // Metal-specific functions for iOS
 
 /**
  * @brief Initializes Metal on iOS.
  */
+
+
+void setMTKView(void* view) {
+    setMetalView(view);  // Cast the void* to MTK::View*
+}
 void initMetalApp() {
     initMetal();  // Calls the initMetal function from metal_utils.cpp
 }
 
-/**
- * @brief Renders using Metal on iOS. This function will be called from Swift/Objective-C.
- */
 void renderMetalApp() {
     renderMetal();  // Calls the renderMetal function from metal_utils.cpp
 }
 
 #elif defined(ANDROID)
+
+#include "opengl_utils.h"
+#include "opengl_shader.h"
+#include <jni.h>
+#include <GLES3/gl3.h>
 // OpenGL-specific variables for Android
 GLuint shaderProgram;
 GLuint vao;

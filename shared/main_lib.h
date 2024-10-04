@@ -1,17 +1,25 @@
 #ifndef MAIN_LIB_H
 #define MAIN_LIB_H
 
-#ifdef __APPLE__
 
+
+
+#ifdef __APPLE__
 /**
  * @brief Initializes the Metal context and other Metal-specific resources.
  */
-void initMetalApp();
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/**
- * @brief Renders using Metal.
- */
-void renderMetalApp();
+void setMTKView(void* view);
+void initMetalApp(void);
+void renderMetalApp(void);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #elif defined(ANDROID)
 
